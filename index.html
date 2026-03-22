@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        /* 思考中小动画：三点跳动 */
         .typing-loader { display: flex; gap: 6px; }
         .dot {
             width: 10px; height: 10px;
@@ -20,7 +19,6 @@
             0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1.0); }
         }
-        /* 美化生成的Markdown表格 */
         table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
         th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
         th { background-color: #f8fafc; }
@@ -33,7 +31,7 @@
             <div>
                 <h1 class="text-4xl font-extrabold text-indigo-950 tracking-tight">LinguistFlow</h1>
                 <p class="text-slate-500 mt-2 font-medium">深度语言学分析 & RP 标准音标</p>
-                <p>设计者：天津财经大学统计学院教授龚凤乾</p>
+                <p>辅导龚悦成同学英语学习专用</p>
             </div>
             <button id="speakBtn" class="hidden flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-5 py-2.5 rounded-full transition font-semibold border border-indigo-200">
                 <span>🔊 Listen (RP Accent)</span>
@@ -71,24 +69,21 @@
         const output = document.getElementById('responseOutput');
         const speakBtn = document.getElementById('speakBtn');
 
-        // TTS 语音功能：尝试匹配英国英语
-        function speakText(text) {
-            if (!window.speechSynthesis) return;
-            window.speechSynthesis.cancel(); // 停止当前正在播放的语音
-            const utterance = new SpeechSynthesisUtterance(text);
-            const voices = window.speechSynthesis.getVoices();
-            // 筛选英国音标 (en-GB)
-            const rpVoice = voices.find(v => v.lang === 'en-GB' || v.name.includes('Great Britain')) || voices[0];
-            utterance.voice = rpVoice;
-            utterance.rate = 0.85; // 稍微慢一点，方便听清细节
-            window.speechSynthesis.speak(utterance);
+        let isSpeaking = false;
+
+        function resetSpeakBtn() {
+            isSpeaking = false;
+            speakBtn.querySelector('span').textContent = '🔊 Listen (RP Accent)';
         }
 
         analyzeBtn.addEventListener('click', async () => {
             const text = document.getElementById('userInput').value.trim();
             if (!text) return;
 
-            // UI 状态切换
+            // 停止正在朗读的内容并重置按钮
+            window.speechSynthesis.cancel();
+            resetSpeakBtn();
+
             analyzeBtn.disabled = true;
             loader.classList.remove('hidden');
             resultContainer.classList.add('hidden');
@@ -100,19 +95,31 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text })
                 });
-                
+
                 if (!res.ok) throw new Error('解析失败，请检查网络或API配置');
-                
+
                 const data = await res.json();
-                
-                // 使用 Marked 渲染渲染结果
                 output.innerHTML = marked.parse(data.reply);
-                
                 resultContainer.classList.remove('hidden');
                 speakBtn.classList.remove('hidden');
-                
-                // 绑定朗读事件
-                speakBtn.onclick = () => speakText(text);
+
+                // 点击小喇叭：播放/停止切换
+                speakBtn.onclick = () => {
+                    if (isSpeaking) {
+                        window.speechSynthesis.cancel();
+                        resetSpeakBtn();
+                    } else {
+                        const utterance = new SpeechSynthesisUtterance(text);
+                        const voices = window.speechSynthesis.getVoices();
+                        const rpVoice = voices.find(v => v.lang === 'en-GB' || v.name.includes('Great Britain')) || voices[0];
+                        utterance.voice = rpVoice;
+                        utterance.rate = 0.85;
+                        utterance.onend = resetSpeakBtn;
+                        window.speechSynthesis.speak(utterance);
+                        isSpeaking = true;
+                        speakBtn.querySelector('span').textContent = '⏹ Stop';
+                    }
+                };
 
             } catch (err) {
                 output.innerHTML = `<div class="p-4 bg-red-50 text-red-700 rounded-lg">抱歉，出现了一个错误：${err.message}</div>`;
@@ -123,7 +130,6 @@
             }
         });
 
-        // 某些浏览器需要预热语音列表
         window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     </script>
 </body>
