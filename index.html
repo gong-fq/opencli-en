@@ -3,68 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LinguistFlow - AI English Learning</title>
+    <title>LinguistFlow - Professional English Tutor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* 自定义 Loading 动画：三个跳动的小点 */
+        .typing-loader {
+            display: flex;
+            gap: 4px;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #4f46e5;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen font-sans">
+<body class="bg-slate-50 min-h-screen">
     <div class="max-w-4xl mx-auto py-12 px-4">
-        <header class="mb-10 border-b pb-6">
-            <h1 class="text-3xl font-bold text-indigo-900">LinguistFlow</h1>
-            <p class="text-gray-600">AI-Powered English Analysis (IPA [RP] & Syntax)</p>
+        <header class="mb-10 flex justify-between items-center border-b pb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 font-serif">LinguistFlow</h1>
+                <p class="text-slate-500 italic text-sm">Refined English Analysis with RP Phonetics</p>
+            </div>
+            <button id="speakBtn" class="hidden flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full text-slate-700 transition">
+                <span>🔊 Listen (RP)</span>
+            </button>
         </header>
 
         <main class="space-y-6">
-            <div class="bg-white p-6 rounded-lg shadow-sm border">
-                <textarea id="userInput" class="w-full p-4 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none" rows="4" placeholder="Paste an English sentence or paragraph here..."></textarea>
-                <button id="analyzeBtn" class="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition">Analyze Now</button>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <textarea id="userInput" class="w-full p-4 border-none bg-slate-50 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-lg" rows="4" placeholder="Enter text to analyze..."></textarea>
+                <div class="flex justify-between items-center mt-4">
+                    <span class="text-xs text-slate-400">Powered by DeepSeek-V3</span>
+                    <button id="analyzeBtn" class="bg-indigo-600 text-white px-8 py-2.5 rounded-lg font-medium hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">Analyze Now</button>
+                </div>
             </div>
 
-            <div id="resultContainer" class="hidden bg-white p-8 rounded-lg shadow-md border leading-relaxed">
-                <div id="responseOutput" class="prose prose-indigo max-w-none text-gray-800 text-lg">
-                    </div>
+            <div id="loader" class="hidden flex flex-col items-center justify-center py-10 space-y-3">
+                <div class="typing-loader">
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                </div>
+                <p class="text-indigo-600 font-medium animate-pulse">DeepSeek is analyzing linguistics...</p>
+            </div>
+
+            <div id="resultContainer" class="hidden bg-white p-10 rounded-xl shadow-md border border-slate-100 prose prose-slate max-w-none">
+                <div id="responseOutput"></div>
             </div>
         </main>
     </div>
 
-  <script>
-    document.getElementById('analyzeBtn').addEventListener('click', async () => {
-        const text = document.getElementById('userInput').value;
-        if (!text) return;
-
-        const btn = document.getElementById('analyzeBtn');
-        const resultDiv = document.getElementById('resultContainer');
+    <script>
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loader = document.getElementById('loader');
+        const resultContainer = document.getElementById('resultContainer');
         const output = document.getElementById('responseOutput');
+        const speakBtn = document.getElementById('speakBtn');
 
-        // 状态初始化
-        btn.disabled = true;
-        btn.innerText = 'Analyzing...';
-        resultDiv.classList.remove('hidden');
-        output.innerHTML = '<p class="text-gray-400 italic">LinguistFlow is thinking...</p>';
-
-        try {
-            const res = await fetch('/.netlify/functions/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text })
-            });
-            
-            if (!res.ok) throw new Error('Network response was not ok');
-            
-            const data = await res.json();
-
-            // --- 核心修改处 ---
-            // 使用 marked.parse() 将 DeepSeek 返回的 Markdown 字符串转换成漂亮的 HTML
-            output.innerHTML = marked.parse(data.reply);
-            // ------------------
-
-        } catch (err) {
-            output.innerHTML = `<div class="text-red-500 font-mono">Error: ${err.message}</div>`;
-        } finally {
-            btn.disabled = false;
-            btn.innerText = 'Analyze Now';
+        // TTS 功能：强制选择 British English (RP) 语音
+        function speakText(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+            // 优先匹配包含 'GB' 或 'UK' 的英国嗓音
+            const rpVoice = voices.find(v => v.lang.includes('en-GB')) || voices[0];
+            utterance.voice = rpVoice;
+            utterance.rate = 0.9; // 略微放慢语速，方便听清 IPA
+            window.speechSynthesis.speak(utterance);
         }
-    });
-</script>
+
+        analyzeBtn.addEventListener('click', async () => {
+            const text = document.getElementById('userInput').value;
+            if (!text) return;
+
+            // 状态切换
+            analyzeBtn.disabled = true;
+            loader.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+            speakBtn.classList.add('hidden');
+
+            try {
+                const res = await fetch('/.netlify/functions/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+                
+                output.innerHTML = marked.parse(data.reply);
+                
+                // 显示结果和朗读按钮
+                resultContainer.classList.remove('hidden');
+                speakBtn.classList.remove('hidden');
+                
+                // 绑定朗读原始引文事件
+                speakBtn.onclick = () => speakText(text);
+
+            } catch (err) {
+                output.innerHTML = `<p class="text-red-500 italic">Error occurred: ${err.message}</p>`;
+                resultContainer.classList.remove('hidden');
+            } finally {
+                analyzeBtn.disabled = false;
+                loader.classList.add('hidden');
+            }
+        });
+
+        // 预加载语音，解决部分浏览器延迟问题
+        window.speechSynthesis.getVoices();
+    </script>
 </body>
 </html>

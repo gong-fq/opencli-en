@@ -13,11 +13,14 @@ exports.handler = async (event) => {
       messages: [
         {
           role: "system",
-          content: `你是一位深耕英语语言学的导师。请按以下结构分析文本：
-          ### 1. 词汇精析 (Vocabulary & IPA [RP])
-          - 提取高阶词汇，给出 RP 标准音标和简明义项。
-          ### 2. 句法解构 (Syntactic Analysis)
-          - 选取一个长难句，标注主谓宾，拆解从句逻辑。
+         content: 
+`你是一位深耕英语语言学的导师。请按以下结构分析文本：
+### 0. 中文译文 (Chinese Translation)
+- 提供地道、严谨的中文翻译。
+### 1. 词汇精析 (Vocabulary & IPA [RP])
+- 提取高阶词汇，给出 RP 标准音标和简明义项。
+### 2. 句法解构 (Syntactic Analysis)
+- 选取一个长难句，标注主谓宾，拆解从句逻辑。
           ### 3. 风格与语用 (Style & Usage)
           - 说明文本的语体色彩（如：正式书面语、地道习语等）。`
         },
