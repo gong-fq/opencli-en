@@ -1,0 +1,9 @@
+{
+  "name": "linguistflow-app",
+  "version": "1.0.0",
+  "description": "AI English learning tool",
+  "main": "index.js",
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}

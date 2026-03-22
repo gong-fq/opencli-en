@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinguistFlow - AI English Learning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+    <div class="max-w-4xl mx-auto py-12 px-4">
+        <header class="mb-10 border-b pb-6">
+            <h1 class="text-3xl font-bold text-indigo-900">LinguistFlow</h1>
+            <p class="text-gray-600">AI-Powered English Analysis (IPA [RP] & Syntax)</p>
+        </header>
+
+        <main class="space-y-6">
+            <div class="bg-white p-6 rounded-lg shadow-sm border">
+                <textarea id="userInput" class="w-full p-4 border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none" rows="4" placeholder="Paste an English sentence or paragraph here..."></textarea>
+                <button id="analyzeBtn" class="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition">Analyze Now</button>
+            </div>
+
+            <div id="resultContainer" class="hidden bg-white p-8 rounded-lg shadow-md border leading-relaxed">
+                <div id="responseOutput" class="prose prose-indigo max-w-none text-gray-800 text-lg">
+                    </div>
+            </div>
+        </main>
+    </div>
+
+  <script>
+    document.getElementById('analyzeBtn').addEventListener('click', async () => {
+        const text = document.getElementById('userInput').value;
+        if (!text) return;
+
+        const btn = document.getElementById('analyzeBtn');
+        const resultDiv = document.getElementById('resultContainer');
+        const output = document.getElementById('responseOutput');
+
+        // 状态初始化
+        btn.disabled = true;
+        btn.innerText = 'Analyzing...';
+        resultDiv.classList.remove('hidden');
+        output.innerHTML = '<p class="text-gray-400 italic">LinguistFlow is thinking...</p>';
+
+        try {
+            const res = await fetch('/.netlify/functions/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            
+            if (!res.ok) throw new Error('Network response was not ok');
+            
+            const data = await res.json();
+
+            // --- 核心修改处 ---
+            // 使用 marked.parse() 将 DeepSeek 返回的 Markdown 字符串转换成漂亮的 HTML
+            output.innerHTML = marked.parse(data.reply);
+            // ------------------
+
+        } catch (err) {
+            output.innerHTML = `<div class="text-red-500 font-mono">Error: ${err.message}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Analyze Now';
+        }
+    });
+</script>
+</body>
+</html>
